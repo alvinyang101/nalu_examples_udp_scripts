@@ -1,11 +1,15 @@
 #!/usr/bin/python3
 import argparse
 import logging
+import pickle
 import sys
+import time
 
 from helpers import _is_ip_valid, _is_port_valid
 from naluconfigs import get_available_models
+from naludaq.backend import AcquisitionManager
 from naludaq.board import Board
+from naludaq.communication import AnalogRegisters
 from naludaq.controllers import (
     get_board_controller,
     get_connection_controller,
@@ -42,37 +46,32 @@ def main():
 
     brd = Board(board_model)
     brd.get_udp_connection(board_ip, host_ip)
+    
+    if args.trigger_values:
+        get_trigger_controller(brd).values = args.trigger_values
+        
+    if args.dac_values:
+        for chan, val in enumerate(args.dac_values):
+            get_dac_controller(brd).set_single_dac(chan, val)
 
-    # Readout configuration, uncomment if you want to configure right before start readout
-    # if args.trigger_values:
-    #     get_trigger_controller(brd).values = args.trigger_values
+    if args.trigger_refs:
+        if len(args.trigger_refs) != 4:
+            raise ValueError("Trigger references must include 4 values: low_l high_l low_r high_r")
+        low_l, high_l, low_r, high_r = args.trigger_refs
+        refs = {
+            "left": (low_l, high_l),
+            "right": (low_r, high_r),
+        }
+        get_trigger_controller(brd).references = refs
 
-    # if args.dac_values:
-    #     for chan, val in enumerate(args.dac_values):
-    #         get_dac_controller(brd).set_single_dac(chan, val)
-
-    # if args.trigger_refs:
-    #     if len(args.trigger_refs) != 4:
-    #         raise ValueError("Trigger references must include 4 values: low_l high_l low_r high_r")
-    #     low_l, high_l, low_r, high_r = args.trigger_refs
-    #     refs = {
-    #         "left": (low_l, high_l),
-    #         "right": (low_r, high_r),
-    #     }
-    #     get_trigger_controller(brd).references = refs
-
-    # get_readout_controller(brd).set_read_window(*args.readout_window)
-    # get_readout_controller(brd).set_readout_channels([*range(32)])
-    # get_trigger_controller(brd).write_triggers()
+    get_readout_controller(brd).set_read_window(*args.readout_window)
+    get_readout_controller(brd).set_readout_channels([*range(32)])
+    get_trigger_controller(brd).write_triggers()
 
     # Set receiver address to the target computer's address
     brd.connection_info["receiver_addr"] = target_ip
     get_connection_controller(brd)._configure_ethernet()
 
-    get_board_controller(brd).start_readout(
-        trig=args.trigger_mode,
-        lb=args.lookback_mode,
-    )
     brd.disconnect()
 
 

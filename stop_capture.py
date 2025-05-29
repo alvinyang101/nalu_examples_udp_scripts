@@ -6,6 +6,7 @@ import sys
 from helpers import _is_ip_valid, _is_port_valid
 from naluconfigs import get_available_models
 from naludaq.board import Board
+from naludaq.communication import ControlRegisters
 from naludaq.controllers import get_board_controller
 
 
@@ -28,6 +29,8 @@ def main():
     brd = Board(board_model)
     brd.get_udp_connection(board_ip, host_ip)
 
+    current_registers = ControlRegisters(brd).read_addr_named("04")
+    brd.registers["control_registers"].update(current_registers)
     get_board_controller(brd).stop_readout()
 
     brd.disconnect()
