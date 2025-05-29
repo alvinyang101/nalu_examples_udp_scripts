@@ -43,27 +43,27 @@ def main():
     brd = Board(board_model)
     brd.get_udp_connection(board_ip, host_ip)
 
-    # Readout configuration, uncomment if you want to configure right before start readout
-    # if args.trigger_values:
-    #     get_trigger_controller(brd).values = args.trigger_values
+    if args.configure_readout:
+        if args.trigger_values:
+            get_trigger_controller(brd).values = args.trigger_values
+            get_trigger_controller(brd).write_triggers()
+        
+        if args.dac_values:
+            for chan, val in enumerate(args.dac_values):
+                get_dac_controller(brd).set_single_dac(chan, val)
 
-    # if args.dac_values:
-    #     for chan, val in enumerate(args.dac_values):
-    #         get_dac_controller(brd).set_single_dac(chan, val)
+        if args.trigger_refs:
+            if len(args.trigger_refs) != 4:
+                raise ValueError("Trigger references must include 4 values: low_l high_l low_r high_r")
+            low_l, high_l, low_r, high_r = args.trigger_refs
+            refs = {
+                "left": (low_l, high_l),
+                "right": (low_r, high_r),
+            }
+            get_trigger_controller(brd).references = refs
 
-    # if args.trigger_refs:
-    #     if len(args.trigger_refs) != 4:
-    #         raise ValueError("Trigger references must include 4 values: low_l high_l low_r high_r")
-    #     low_l, high_l, low_r, high_r = args.trigger_refs
-    #     refs = {
-    #         "left": (low_l, high_l),
-    #         "right": (low_r, high_r),
-    #     }
-    #     get_trigger_controller(brd).references = refs
-
-    # get_readout_controller(brd).set_read_window(*args.readout_window)
-    # get_readout_controller(brd).set_readout_channels([*range(32)])
-    # get_trigger_controller(brd).write_triggers()
+        get_readout_controller(brd).set_read_window(*args.readout_window)
+        get_readout_controller(brd).set_readout_channels([*range(brd.channels)])
 
     # Set receiver address to the target computer's address
     brd.connection_info["receiver_addr"] = target_ip
@@ -200,6 +200,14 @@ def parse_args(argv):
         help="Trigger reference values: low_l high_l low_r high_r",
         nargs=4,
         metavar=("LOW_L", "HIGH_L", "LOW_R", "HIGH_R"),
+    )
+    parser.add_argument(
+        "--configure_readout",
+        "-conf",
+        type=bool,
+        default=False,
+        required=False,
+        help="Configures the readout settings if specified. If disabled, just starts readout.",
     )
     return parser.parse_args(argv)
 
