@@ -204,9 +204,8 @@ def parse_args(argv):
     parser.add_argument(
         "--configure_readout",
         "-conf",
-        type=bool,
-        default=False,
         required=False,
+        action="store_true",
         help="Configures the readout settings if specified. If disabled, just starts readout.",
     )
     return parser.parse_args(argv)
